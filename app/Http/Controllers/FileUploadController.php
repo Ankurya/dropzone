@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\FileUpload;
 use Illuminate\Http\Request;
+// use Illuminate\Support\Facades\Storage;
 
 class FileUploadController extends Controller
 {
@@ -16,7 +17,6 @@ class FileUploadController extends Controller
     {
 
         $files = FileUpload::all();
-
         return view('files.index', compact('files'))
             ->with('i', (request()->input('page', 1) - 1) * 5);
     }
@@ -28,7 +28,10 @@ class FileUploadController extends Controller
      */
     public function create()
     {
-        return view('files.create');
+        $files = FileUpload::all();
+        return view('files.create')
+            ->with(['files' => $files]);
+
     }
 
     /**
@@ -39,14 +42,13 @@ class FileUploadController extends Controller
      */
     public function store(Request $request)
     {
-        $image = $request->file('file');
-        $FileName = $image->getClientOriginalName();
-        $image->move(public_path('images'), $FileName);
+        $size = $request->file("file")->getSize();
+        $file = $request->file('file');
+        $FileName = uniqid() . "_" . $file->getClientOriginalName();
+        $destinationPath = storage_path('app/public');
+        $file->move($destinationPath, $FileName);
+        $isCreated = FileUpload::create(['filename' => $FileName, 'filesize' => $size]);
 
-        $imageUpload = new FileUpload();
-        $imageUpload->filename = $FileName;
-        $imageUpload->save();
-        return response()->json(['success' => $FileName]);
     }
 
     /**
@@ -55,9 +57,10 @@ class FileUploadController extends Controller
      * @param  \App\Models\FileUpload  $fileUpload
      * @return \Illuminate\Http\Response
      */
-    public function show(FileUpload $fileUpload)
+    public function show($id)
     {
-        //
+        $image = FileUpload::find($id);
+        return view('files.filepreview', compact('image'));
     }
 
     /**
@@ -93,9 +96,7 @@ class FileUploadController extends Controller
     {
 
         $fileUpload = FileUpload::find($id);
-
         $fileUpload->delete();
-
         return redirect()->back()
             ->with('success', 'File deleted successfully');
     }
